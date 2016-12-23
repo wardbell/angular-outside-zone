@@ -10,7 +10,7 @@ import 'rxjs/add/operator/takeUntil';
 @Component({
   selector: 'my-app',
   template: `
-    <h1>Stock Ticker</h1>
+    <h1>NgZone Stock Ticker</h1>
     <div>
       <button type="reset" (click)="reset()">Reset</button>
       Portfolio size:

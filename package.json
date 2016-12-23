@@ -1,7 +1,7 @@
 {
-  "name": "angular-quickstart",
+  "name": "angular-outside-the-zone",
   "version": "1.0.0",
-  "description": "QuickStart package.json from the documentation, supplemented with testing support",
+  "description": "Explore running chatty async code outside the Angular zone",
   "scripts": {
     "start": "tsc && concurrently \"tsc -w\" \"lite-server\" ",
     "e2e": "tsc && concurrently \"http-server -s\" \"protractor protractor.config.js\" --kill-others --success first",
