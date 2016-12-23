@@ -1,8 +1,17 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, OnDestroy } from '@angular/core';
 
 import { priceChanges, russell3000 } from './russell3000';
 
 export type StockPrice = {ticker: string, price: number};
+
+function minMax(value: number, min: number, max: number) {
+  return Math.min(max, value, Math.max(min ,value));
+}
+
+export class PriceEngineOptions {
+  serviceSpeed = 100; // how often the price engine publishes a price change (ms)
+  stockMixSize = 10;  // number of different kinds of stocks to emit
+}
 
 @Injectable()
 /**
@@ -10,18 +19,28 @@ export type StockPrice = {ticker: string, price: number};
   */
 export class PriceEngine implements OnDestroy {
 
-  private delay = 100; // ms delay before next price pushed
+  private delay = 100;
+
+  inAngularZone = true;
+
+  private options = new PriceEngineOptions();
 
   private priceChangeIx = 0;
-  private priceChangesMax = priceChanges.length - 1;
+  private priceChangesMax = priceChanges.length;
   private priceChangeTimerId: any;
+
+  private stockMixSize = 10;
 
   private tickers = Object.keys(russell3000);
   private tickersLen = this.tickers.length;
   private tickerIx = 0;
-  private tickerIxMax = this.tickersLen - 1;
+
+  constructor() { }
 
   getPrices(processPrice: (price: StockPrice) => void) {
+    this.inAngularZone = NgZone.isInAngularZone();
+    console.log(`Price engine running in Angular zone: ${this.inAngularZone}`);
+
     clearInterval(this.priceChangeTimerId);
     if (processPrice) {
       this.priceChangeTimerId = setInterval(() => {
@@ -31,8 +50,11 @@ export class PriceEngine implements OnDestroy {
   }
 
   nextPrice(): StockPrice {
-    this.tickerIx = this.tickerIx++ === this.tickerIxMax ? 0 : this.tickerIx;
-    this.priceChangeIx = this.priceChangeIx++ === this.priceChangesMax ? 0 : this.priceChangeIx;
+    this.tickerIx += 1;
+    if (this.tickerIx === this.stockMixSize ) { this.tickerIx = 0; }
+
+    this.priceChangeIx += 1;
+    if (this.priceChangeIx === this.priceChangesMax ) { this.priceChangeIx = 0; }
 
     const ticker = this.tickers[this.tickerIx];
     return {
@@ -45,10 +67,11 @@ export class PriceEngine implements OnDestroy {
     clearInterval(this.priceChangeTimerId);
   }
 
-  reset(portfolioSize = 10, delay = 100) {
-    this.delay = Math.min(1000, delay, Math.max(0, delay));
+  reset(options?: PriceEngineOptions) {
+    this.options = Object.assign(this.options, options);
+    this.delay = minMax(this.options.serviceSpeed, 0, 1000);
     this.priceChangeIx = 0;
+    this.stockMixSize = minMax(this.options.stockMixSize, 1, this.tickersLen);
     this.tickerIx = 0;
-    this.tickerIxMax = Math.min(this.tickersLen, portfolioSize, Math.max(1, portfolioSize)) - 1;
   }
 }

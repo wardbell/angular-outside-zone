@@ -1,6 +1,6 @@
 {
   "name": "angular-outside-the-zone",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Explore running chatty async code outside the Angular zone",
   "scripts": {
     "start": "tsc && concurrently \"tsc -w\" \"lite-server\" ",

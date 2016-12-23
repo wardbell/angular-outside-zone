@@ -5,15 +5,31 @@ import { Observer }   from 'rxjs/Observer';
 import { Subject }    from 'rxjs/Subject';
 import 'rxjs/add/operator/takeUntil';
 
-import { PriceEngine, StockPrice } from './price-engine.service';
-export { StockPrice } from './price-engine.service';
+import { PriceEngine, PriceEngineOptions, StockPrice } from './price-engine.service';
+export { StockPrice }  from './price-engine.service';
+import { russell3000 } from './russell3000';
+
+const portfolioMax = Object.keys(russell3000).length;
+
+function minMax(value: number, min: number, max: number) {
+  return Math.min(max, value, Math.max(min, value));
+}
+
+export class PriceServiceOptions extends PriceEngineOptions {
+  bufferSize    = 100;   // price change buffer max; publishes when exceeded
+  outsideZone   = false; // true === run outside Angular zone
+  portfolioSize = 10;    // number of stocks in portfolio
+  publishWindow = 2000;  // max time (ms) to publish outside zone  portfolioSize = 10;
+}
 
 @Injectable()
 export class PriceService implements OnDestroy {
 
   private changes: Observable<StockPrice[]>;
   private onDestroy: Subject<any>;
-  private publishWindow = 2000; // max time (ms) to publish outside zone
+  private options: PriceServiceOptions = new PriceServiceOptions();
+  private prices: StockPrice[] = [];
+  private publishNow = false;
   private zoneTimerId: any;
 
   constructor(private ngZone: NgZone, private priceEngine: PriceEngine) { }
@@ -25,9 +41,16 @@ export class PriceService implements OnDestroy {
     return this.changes;
   }
 
-  start(portfolioSize = 10, delay = 100, outsideZone = false, publishWindow = 2000): Observable<StockPrice[]> {
-    this.priceEngine.reset(portfolioSize, delay);
-    this.publishWindow = publishWindow;
+  start(options?: PriceServiceOptions): Observable<StockPrice[]> {
+    this.options = Object.assign(this.options, options);
+    this.options.bufferSize    = minMax(this.options.bufferSize, 1, 100);
+    this.options.portfolioSize = minMax(this.options.portfolioSize, 1, portfolioMax);
+    this.options.publishWindow = minMax(this.options.publishWindow, 0, 3000);
+
+    // stock engine mix === portfolio size for now
+    this.options.stockMixSize = this.options.portfolioSize;
+
+    this.priceEngine.reset(this.options);
     clearInterval(this.zoneTimerId);
 
     if (this.onDestroy) {
@@ -35,13 +58,14 @@ export class PriceService implements OnDestroy {
     }
     this.onDestroy = new Subject<any>();
 
-    this.changes = this.createChanges(outsideZone);
+    this.prices = [];
+    this.changes = this.createChanges();
     return this.changes;
   };
 
-  private createChanges(outsideZone: boolean) {
+  private createChanges() {
     return Observable.create((observer: Observer<StockPrice[]>) => {
-      if (outsideZone) {
+      if (this.options.outsideZone) {
         this.getPricesOutsideZone(observer);
       } else {
         this.getPricesInsideZone(observer);
@@ -56,32 +80,34 @@ export class PriceService implements OnDestroy {
     this.onDestroy.complete();
   }
 
+  private getPrices(publish: () => void) {
+    clearInterval(this.zoneTimerId);
+    this.zoneTimerId = setInterval(() => this.publishNow = true, this.options.publishWindow);
+
+    this.priceEngine.getPrices(price => {
+      this.prices.push(price);
+      if ((this.publishNow && this.prices.length > 0) ||
+           this.prices.length > this.options.bufferSize ) {
+        this.publishNow = false;
+        if (this.prices.length) {
+          publish();
+        }
+      }
+    });
+  }
+
   private getPricesInsideZone(observer: Observer<StockPrice[]>) {
-    this.priceEngine.getPrices(price => observer.next([price]));
+    this.getPrices(() => this.publishPrices(observer));
   }
 
   private getPricesOutsideZone(observer: Observer<StockPrice[]>) {
-    const ngZone = this.ngZone;
-    let prices: StockPrice[] = [];
-    let publishNow = false;
-
-    this.zoneTimerId = setInterval(() => publishNow = true, this.publishWindow);
-
-    ngZone.runOutsideAngular(() => {
-      this.priceEngine.getPrices(price => publish(price));
+    this.ngZone.runOutsideAngular(() => {
+      this.getPrices(() => this.ngZone.run(() => this.publishPrices(observer)));
     });
+  }
 
-    function publish(price: StockPrice) {
-      prices.push(price);
-
-      if ((publishNow && prices.length > 0) ||
-           prices.length > 100 ) {
-        ngZone.run(() => {
-          publishNow = false;
-          observer.next(prices);
-          prices = [];
-        });
-      }
-    }
+  private publishPrices(observer: Observer<StockPrice[]>) {
+    observer.next(this.prices);
+    this.prices = [];
   }
 }
