@@ -3,7 +3,6 @@ import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { Observable } from 'rxjs/Observable';
 import { Observer }   from 'rxjs/Observer';
 import { Subject }    from 'rxjs/Subject';
-import 'rxjs/add/operator/delay';
 import 'rxjs/add/operator/takeUntil';
 
 import { PriceEngine, StockPrice } from './price-engine.service';
@@ -19,7 +18,7 @@ export class PriceService implements OnDestroy {
 
   constructor(private ngZone: NgZone, private priceEngine: PriceEngine) { }
 
-  getChanges() {
+  getPriceChanges() {
     if (!this.changes) {
       this.start();
     }
@@ -43,9 +42,9 @@ export class PriceService implements OnDestroy {
   private createChanges(outsideZone: boolean) {
     return Observable.create((observer: Observer<StockPrice[]>) => {
       if (outsideZone) {
-        this.setPricesOutsideZone(observer);
+        this.getPricesOutsideZone(observer);
       } else {
-        this.setPricesInsideZone(observer);
+        this.getPricesInsideZone(observer);
       }
     })
     .takeUntil(this.onDestroy);
@@ -57,11 +56,11 @@ export class PriceService implements OnDestroy {
     this.onDestroy.complete();
   }
 
-  private setPricesInsideZone(observer: Observer<StockPrice[]>) {
+  private getPricesInsideZone(observer: Observer<StockPrice[]>) {
     this.priceEngine.getPrices(price => observer.next([price]));
   }
 
-  private setPricesOutsideZone(observer: Observer<StockPrice[]>) {
+  private getPricesOutsideZone(observer: Observer<StockPrice[]>) {
     const ngZone = this.ngZone;
     let prices: StockPrice[] = [];
     let publishNow = false;
