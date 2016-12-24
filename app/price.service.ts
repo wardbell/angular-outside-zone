@@ -30,19 +30,16 @@ export class PriceService implements OnDestroy {
   private options: PriceServiceOptions = new PriceServiceOptions();
   private prices: StockPrice[] = [];
   private publishNow = false;
-  private zoneTimerId: any;
+  private publishTimerId: any;
 
   constructor(private ngZone: NgZone, private priceEngine: PriceEngine) { }
 
   getPriceChanges() {
-    if (!this.changes) {
-      this.start();
-    }
-    return this.changes;
+    return this.changes || this.start();
   }
 
   start(options?: PriceServiceOptions): Observable<StockPrice[]> {
-    this.options = Object.assign(this.options, options);
+    Object.assign(this.options, options);
     this.options.bufferSize    = minMax(this.options.bufferSize, 1, 100);
     this.options.portfolioSize = minMax(this.options.portfolioSize, 1, portfolioMax);
     this.options.publishWindow = minMax(this.options.publishWindow, 0, 3000);
@@ -51,7 +48,7 @@ export class PriceService implements OnDestroy {
     this.options.stockMixSize = this.options.portfolioSize;
 
     this.priceEngine.reset(this.options);
-    clearInterval(this.zoneTimerId);
+    clearInterval(this.publishTimerId);
 
     if (this.onDestroy) {
       this.onDestroy.complete();
@@ -76,13 +73,13 @@ export class PriceService implements OnDestroy {
 
   ngOnDestroy() {
     console.log('PriceService disposed');
-    clearInterval(this.zoneTimerId);
+    clearInterval(this.publishTimerId);
     this.onDestroy.complete();
   }
 
   private getPrices(publish: () => void) {
-    clearInterval(this.zoneTimerId);
-    this.zoneTimerId = setInterval(() => this.publishNow = true, this.options.publishWindow);
+    clearInterval(this.publishTimerId);
+    this.publishTimerId = setInterval(() => this.publishNow = true, this.options.publishWindow);
 
     this.priceEngine.getPrices(price => {
       this.prices.push(price);

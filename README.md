@@ -14,7 +14,8 @@ from the service.
 
 ## tl;dr
 
-Running inside/outside the zone matters although not as much as buffering.
+Running inside/outside the zone makes a significant difference
+although not as much as buffering.
 
 ## Discussion
 
@@ -62,7 +63,7 @@ in less than 1 ms but that's the goal.
 
 * Outside-zone-flag: whether to run the price engine outside the Angular zone. 
 
-Any change to any of the switches triggers a reset ... as does the "Reset" button.
+Any change to any of the switches triggers a service-and-engine reset.
 
 The price engine and the pricing service publication mechanisms are identical
 whether running inside or outside the zone.

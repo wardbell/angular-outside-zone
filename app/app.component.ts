@@ -12,7 +12,6 @@ import 'rxjs/add/operator/takeUntil';
   template: `
     <h1>NgZone Stock Ticker</h1>
     <div>
-      <button type="reset" (click)="reset()">Reset</button><br>
       Portfolio size:
       <select [(ngModel)]="options.portfolioSize" (change)="reset()">
         <option *ngFor="let size of portfolioSizes">{{size}}</option>
@@ -20,21 +19,26 @@ import 'rxjs/add/operator/takeUntil';
       Service speed (ms):
       <select [(ngModel)]="options.serviceSpeed"  (change)="reset()">
         <option *ngFor="let speed of serviceSpeeds">{{speed}}</option>
-      </select><br>
-      publish window:
-      <select [(ngModel)]="options.publishWindow"  (change)="reset()">
-        <option *ngFor="let window of publishWindows">{{window}}</option>
-      </select><br>
+      </select><br><br>
       Buffer size:
-      <select [(ngModel)]="options.bufferSize"  (change)="reset()">
+      <select [(ngModel)]="options.bufferSize"   (change)="reset()">
         <option *ngFor="let buffer of bufferSizes">{{buffer}}</option>
       </select><br>
-      <input type="checkbox" [(ngModel)]="options.outsideZone"  (change)="reset()"/> run outside zone
+      Publish window (ms):
+      <select [(ngModel)]="options.publishWindow" (change)="reset()">
+        <option *ngFor="let window of publishWindows">{{window}}</option>
+      </select><br><br>
+      <input id="zoneToggle" type="checkbox"
+             [(ngModel)]="options.outsideZone" (change)="reset()" />
+      <label for="zoneToggle"> Running outside zone</label>
     </div>
+
+    <hr>
+
     <p *ngIf="lastStockPrice">
-      Last price:{{lastStockPrice.ticker}} - {{lastStockPrice.price}}
+      Latest price change:{{lastStockPrice.ticker}} - {{lastStockPrice.price}}
     </p>
-    <div *ngFor="let stock of stocks">
+    <div *ngFor="let stock of portfolio">
       <strong>{{stock.ticker}}</strong>: {{stock.price}}
     </div>
   `,
@@ -49,19 +53,18 @@ export class AppComponent implements OnInit, OnDestroy {
   portfolioSizes = [10, 50, 100, 400, 800, 2000, 2500, 3000];
   publishWindows = [2000, 1000, 500, 0];
   serviceSpeeds  = [100, 50, 10, 0];
-  stocks: StockPrice[];
-  stockMap: { [key: string]: number };
+
+  portfolio: StockPrice[];
+  portFolioStockMap: { [key: string]: number };
 
   private options: PriceServiceOptions =
-    Object.assign(new PriceServiceOptions, {
+    Object.assign(new PriceServiceOptions(), {
       bufferSize: this.bufferSizes[0],
       outsideZone: false,
       portfolioSize: this.portfolioSizes[0],
       publishWindow: this.publishWindows[0],
       serviceSpeed:  this.serviceSpeeds[0],
     });
-
-  tickers: string[] = [];
 
   constructor(private priceService: PriceService) {  }
 
@@ -74,26 +77,31 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   reset() {
-    this.stockMap = {};
-    this.stocks   = [];
+    this.portFolioStockMap = {};
+    this.portfolio         = [];
 
+    // initialize portfolio with initial prices
     const tickers = Object.keys(russell3000).slice(0, this.options.portfolioSize);
     tickers.forEach( (ticker, i) => {
-      this.stockMap[ticker] = i;
-      this.stocks.push( {ticker, price: russell3000[ticker] });
+      this.portFolioStockMap[ticker] = i;
+      this.portfolio.push( {ticker, price: russell3000[ticker] });
     });
 
+    // listen for stock price changes and update portfolio
     this.priceService.start(this.options)
       .takeUntil(this.onDestroy)
-      .subscribe(prices => {
-        prices.forEach(price => {
-          const ix = this.stockMap[price.ticker];
+      .subscribe(stocks => {
+
+        // update portfolio
+        stocks.forEach(stock => {
+          const ix = this.portFolioStockMap[stock.ticker];
           if (ix !== undefined) {
-            this.stocks[ix].price = price.price;
+            this.portfolio[ix] = stock;
           }
         });
-        const last = prices.length - 1;
-        if (last >= 0) { this.lastStockPrice = prices[last]; }
+
+        const last = stocks.length - 1;
+        if (last >= 0) { this.lastStockPrice = stocks[last]; }
       });
   }
 }
