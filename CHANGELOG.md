@@ -1,5 +1,6 @@
 ## Angular Outside The Zone
 
+### Cosmetics v.2.0.2 (23-Dec-2016)
 ### Cosmetics v.2.0.1 (23-Dec-2016)
 
 ### Buffer both in and outside zone v.2.0.0 (23-Dec-2016)

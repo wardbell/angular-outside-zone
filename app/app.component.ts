@@ -88,7 +88,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
 
     // listen for stock price changes and update portfolio
-    this.priceService.start(this.options)
+    this.priceService.reset(this.options)
       .takeUntil(this.onDestroy)
       .subscribe(stocks => {
 

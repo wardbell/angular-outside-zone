@@ -5,7 +5,7 @@ import { priceChanges, russell3000 }     from './russell3000';
 export type StockPrice = {ticker: string, price: number};
 
 function minMax(value: number, min: number, max: number) {
-  return Math.min(max, value, Math.max(min, value));
+  return Math.min(max, Math.max(min, value));
 }
 
 export class PriceEngineOptions {
