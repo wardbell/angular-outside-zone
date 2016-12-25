@@ -53,7 +53,8 @@ which triggers binding updates.
 * Portfolio size:  How many stocks to track and present. 
 The higher the number, the more views on screen to bind.
 
-* Publish window: How often to publish price changes, regardless of buffer.
+* Publish window: How often to publish price changes, regardless of buffer. 
+0 === off; only publish when buffer is full.
 
 * Service speed: How fast (in milliseconds) the price engine returns stock price changes.
 The lower the number, the faster it goes, 

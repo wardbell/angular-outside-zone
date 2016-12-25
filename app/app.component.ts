@@ -30,7 +30,7 @@ import 'rxjs/add/operator/takeUntil';
       </select><br><br>
       <input id="zoneToggle" type="checkbox"
              [(ngModel)]="options.outsideZone" (change)="reset()" />
-      <label for="zoneToggle"> Running outside zone</label>
+      <label for="zoneToggle"> Running outside Angular zone</label>
     </div>
 
     <hr>
@@ -51,7 +51,7 @@ export class AppComponent implements OnInit, OnDestroy {
   lastStockPrice: StockPrice;
   bufferSizes    = [100, 50, 1];
   portfolioSizes = [10, 50, 100, 400, 800, 2000, 2500, 3000];
-  publishWindows = [2000, 1000, 500, 0];
+  publishWindows = [2000, 1000, 500, 1, 0];
   serviceSpeeds  = [100, 50, 10, 0];
 
   portfolio: StockPrice[];
@@ -70,25 +70,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.reset();
-  }
-
-  ngOnDestroy() {
-    this.onDestroy.complete();
-  }
-
-  reset() {
-    this.portFolioStockMap = {};
-    this.portfolio         = [];
-
-    // initialize portfolio with initial prices
-    const tickers = Object.keys(russell3000).slice(0, this.options.portfolioSize);
-    tickers.forEach( (ticker, i) => {
-      this.portFolioStockMap[ticker] = i;
-      this.portfolio.push( {ticker, price: russell3000[ticker] });
-    });
 
     // listen for stock price changes and update portfolio
-    this.priceService.reset(this.options)
+    this.priceService.priceChanges
       .takeUntil(this.onDestroy)
       .subscribe(stocks => {
 
@@ -103,5 +87,29 @@ export class AppComponent implements OnInit, OnDestroy {
         const last = stocks.length - 1;
         if (last >= 0) { this.lastStockPrice = stocks[last]; }
       });
+  }
+
+  ngOnDestroy() {
+    this.onDestroy.complete();
+  }
+
+  /**
+   * (re)set portfolio and price service options
+   */
+  reset() {
+    this.portFolioStockMap = {};
+    this.portfolio         = [];
+
+    // initialize portfolio with initial prices
+    const tickers = Object.keys(russell3000).slice(0, this.options.portfolioSize);
+    tickers.forEach( (ticker, i) => {
+      this.portFolioStockMap[ticker] = i;
+      this.portfolio.push( {ticker, price: russell3000[ticker] });
+    });
+
+    // stock engine mix === portfolio size for now
+    this.options.stockMixSize = this.options.portfolioSize;
+
+    this.priceService.reset(this.options);
   }
 }
